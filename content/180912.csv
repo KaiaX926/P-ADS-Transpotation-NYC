@@ -1,0 +1,112 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "name": "Citi_Bike_data.ipynb",
+      "provenance": [],
+      "machine_shape": "hm",
+      "mount_file_id": "1nVfi1RQ5HSs_1YLqjE0OsyswT6o91Sq0",
+      "authorship_tag": "ABX9TyMreucFoHYD2IdZAqxtOlnr",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/KaiaX926/P-ADS-Transpotation-NYC/blob/main/content/180912.csv\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 2,
+      "metadata": {
+        "id": "XACJJWMahUzC"
+      },
+      "outputs": [],
+      "source": [
+        "import requests\n",
+        "from lxml import etree\n",
+        "from io import BytesIO\n",
+        "from zipfile import ZipFile\n",
+        "import urllib.request\n",
+        "import pandas as pd\n",
+        "\n",
+        "class ScrapeData():\n",
+        "    def __init__(self):\n",
+        "        self.link = requests.get('https://s3.amazonaws.com/tripdata')\n",
+        "        self.source = etree.fromstring(self.link.content)\n",
+        "        self.lists = []\n",
+        "        self.table = 0\n",
+        "    \n",
+        "    def Scrape(self):\n",
+        "        for item in self.source.xpath('//*'):\n",
+        "            if item.text and item.text.endswith('zip') \\\n",
+        "            and (item.text[:6] >= '202109' and item.text[:6] <= '202202' and item.text[:2] == '20'):\n",
+        "                origin = 'https://s3.amazonaws.com/tripdata/' + item.text\n",
+        "                print(item.text)\n",
+        "                self.table += 1\n",
+        "                url = urllib.request.urlopen(origin)\n",
+        "                with ZipFile(BytesIO(url.read())) as my_zip_file:\n",
+        "                    for contained_file in my_zip_file.namelist():\n",
+        "                        for line in my_zip_file.open(contained_file).readlines():\n",
+        "                            try:\n",
+        "                                l = line[:-2].decode(\"utf-8\")\n",
+        "                                l = l.replace('\"', \"\").split(\",\")\n",
+        "                                if self.table > 1 and l[0] == 'ride_id':\n",
+        "                                    pass\n",
+        "                                else:\n",
+        "                                    self.lists.append(l)\n",
+        "                            except:\n",
+        "                                pass\n",
+        "        df = pd.DataFrame(self.lists)\n",
+        "        df.columns = df.iloc[0]\n",
+        "        df = df[1:]\n",
+        "        \n",
+        "        df.to_csv('220902.csv', index=False) \n",
+        "        \n",
+        "        return df"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "S = ScrapeData()\n",
+        "df_220902 = S.Scrape()"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "ASd1FfZthh0D",
+        "outputId": "737e7225-8cf0-4313-d7ce-617bdaf9bcbd"
+      },
+      "execution_count": 3,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "202109-citibike-tripdata.csv.zip\n",
+            "202110-citibike-tripdata.csv.zip\n",
+            "202111-citibike-tripdata.csv.zip\n",
+            "202112-citibike-tripdata.csv.zip\n",
+            "202201-citibike-tripdata.csv.zip\n"
+          ]
+        }
+      ]
+    }
+  ]
+}
